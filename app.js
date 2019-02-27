@@ -9,7 +9,7 @@ var usersRouter = require('./routes/users');
 var ucRouter = require('./routes/uc');
 
 var app = express();
-
+var cors = require('cors');
 var mongoose = require('mongoose');
 
 // view engine setup
@@ -25,7 +25,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/uc', ucRouter);
+
+app.use(cors())
 // catch 404 and forward to error handler
+// var corsOptions = {
+//   origin: '*',
+//   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+// }
 app.use(function (req, res, next) {
   next(createError(404));
 });
