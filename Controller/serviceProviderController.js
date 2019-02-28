@@ -41,7 +41,7 @@ exports.addService = (req, res) => {
     } else {
         var ans = commonFunction.verifyToken(token, function (data) {
             if (!data) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 if (data.userType == 'serviceProvider') {
                     var newService = req.body;
@@ -51,7 +51,7 @@ exports.addService = (req, res) => {
                     });
                     serviceModel(addService).save((err, data) => {
                         if (err) {
-                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                            res.json(commonFunction.sendResponse(500, 'error while adding service', err));
                         } else {
                             res.json(commonFunction.sendResponse(200, 'service Added', data));
                         }
@@ -74,7 +74,7 @@ exports.updateService = (req, res) => {
     } else {
         commonFunction.verifyToken(token, function (data) {
             if (!data) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 if (data.userType == 'serviceProvider') {
                     commonFunction.checkServiceId(data, req.body.serviceId, (chk, serData) => {
@@ -87,7 +87,7 @@ exports.updateService = (req, res) => {
                                     }
                                 }, function (err, data) {
                                     if (err) {
-                                        res.json(commonFunction.sendResponse(500, 'Server error', ''));
+                                        res.json(commonFunction.sendResponse(500, 'error while updating service', ''));
                                     } else {
                                         res.json(commonFunction.sendResponse(200, 'Service Updated', data));
                                     }
@@ -115,7 +115,7 @@ exports.deleteService = (req, res) => {
     } else {
         commonFunction.verifyToken(token, function (data) {
             if (!data) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 if (data.userType == 'serviceProvider') {
                     commonFunction.checkServiceId(data, req.body.serviceId, (chk, serData) => {
@@ -179,7 +179,7 @@ exports.getServiceList = (req, res) => {
     } else {
         serviceModel.find().populate().exec((err, data) => {
             if (err) {
-                res.json(commonFunction.sendResponse(500, 'Server error', ''));
+                res.json(commonFunction.sendResponse(500, 'error while getting service list', ''));
             } else {
                 res.json(commonFunction.sendResponse(200, 'List of Services', data));
             }
@@ -193,7 +193,7 @@ exports.changeStatus = (req, res) => {
 
     commonFunction.verifyToken(token, function (data) {
         if (!data) {
-            res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', data));
+            res.json(commonFunction.sendResponse(404, 'user not logged in', data));
         } else {
             if (data.userType == 'serviceProvider') {
                 commonFunction.checkSerReqId(data, req.body.serviceRequestId, (chk, serReqData) => {
@@ -212,11 +212,11 @@ exports.changeStatus = (req, res) => {
                                             }
                                         }, function (err, data) {
                                             if (err) {
-                                                res.json(commonFunction.sendResponse(500, 'Server error', ''));
+                                                res.json(commonFunction.sendResponse(500, ' error while changing status', ''));
                                             } else {
                                                 serviceRequestModel.findOne({ _id: req.body.serviceRequestId }, (err, dataUpdated) => {
                                                     if (err) {
-                                                        res.json(commonFunction.sendResponse(500, 'Server error', ''));
+                                                        res.json(commonFunction.sendResponse(500, 'error while changing status', ''));
                                                     } else {
                                                         res.json(commonFunction.sendResponse(200, 'Status Changed', dataUpdated));
                                                     }

@@ -10,7 +10,7 @@ exports.createRequest = (req, res) => {
     } else {
         var ans = commonFunction.verifyToken(token, function (data) {
             if (!data) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 if (data.userType == 'customer') {
                     var newRequest = req.body;
@@ -22,7 +22,7 @@ exports.createRequest = (req, res) => {
                     });
                     serviceRequestModel(addRequest).save((err, data) => {
                         if (err) {
-                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                            res.json(commonFunction.sendResponse(500, 'error while creating request ', err));
                         } else {
                             res.json(commonFunction.sendResponse(200, 'Request Created', data));
                         }
@@ -45,7 +45,7 @@ exports.deleteRequest = (req, res) => {
     } else {
         commonFunction.verifyToken(token, function (data1) {
             if (!data1) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 if (data1.userType == 'customer') {
 
@@ -58,11 +58,11 @@ exports.deleteRequest = (req, res) => {
                                 serviceRequestModel.findByIdAndRemove({ _id: req.body.serviceRequestId }, (err, data) => {
 
                                     if (err) {
-                                        res.json(commonFunction.sendResponse(500, 'Server error while deleting request', err));
+                                        res.json(commonFunction.sendResponse(500, ' error while deleting request', err));
                                     } else {
                                         commentModel.remove({ serviceRequestId: req.body.serviceRequestId }, (err, data) => {
                                             if (err) {
-                                                res.json(commonFunction.sendResponse(500, 'Server error while deleting comments of request', err));
+                                                res.json(commonFunction.sendResponse(500, ' error while deleting request', err));
                                             } else {
                                                 res.json(commonFunction.sendResponse(200, 'Request Deleted', ''));
                                             }
