@@ -5,7 +5,7 @@ var commentModel = require('../models/commentModel');
 var serviceRequestModel = require('../models/serviceRequestModel');
 var serviceModel = require('../models/serviceModel');
 exports.registerUserDetails = (req, res) => {
-    if (req.body.password) {
+    if (req.body.password && req.body.password.length > 5) {
         password = bcrypt.hashSync(req.body.password, 8);
         var newUser = new userModel(
             {
@@ -16,13 +16,15 @@ exports.registerUserDetails = (req, res) => {
                 token: ''
             }
         );
+
     } else {
-        res.json(commonFunction.sendResponse(404, 'Password required', ''));
+        res.json(commonFunction.sendResponse(404, 'Password required/ Password of minimum 6 letters', ''));
     }
+
     newUser.save(function (err, Add) {
         if (err) {
             console.log(err);
-            res.json(commonFunction.sendResponse(500, 'Insertion  failed. All field Required', err));
+            res.json(commonFunction.sendResponse(500, 'Registeration Unsuccessful', err.message));
         }
         else {
 
@@ -36,7 +38,7 @@ exports.loginUser = (req, res) => {
     var newUser = req.body;
     userModel.findOne({ email: req.body.email }, (err, data) => {
         if (err) {
-            res.json(commonFunction.sendResponse(500, 'Error on the server in finding email', err));
+            res.json(commonFunction.sendResponse(500, 'wrong email', err));
             console.log(err);
         } else if (!data) {
             res.json(commonFunction.sendResponse(404, 'wrong email', data));
@@ -52,14 +54,14 @@ exports.loginUser = (req, res) => {
                     $set: { token: newToken }
                 }, { upsert: true }, (err, data1) => {
                     if (err) {
-                        res.status(500).send('Error on the server while creating token');
+                        res.status(500).send('wrong email');
                         console.log(err);
                     } else {
                         console.log("d1" + data1);
 
                         userModel.findOne({ email: req.body.email }, { password: 0 }, (err, data2) => {
                             if (err) {
-                                res.status(500).send('Error on the server while fetching user details');
+                                res.status(500).send('login unsuccessful. try again!');
                                 console.log(err);
                             } else {
                                 console.log("d2" + data2);
@@ -68,7 +70,7 @@ exports.loginUser = (req, res) => {
                                     serviceRequestModel.find({ customerId: data2._id }).populate('serviceId').exec((err, data3) => {
                                         console.log("d3" + data3);
                                         if (err) {
-                                            res.status(500).send('Error on the server while fetching service request details');
+                                            res.status(500).send('login unsuccessful. try again!');
                                             console.log(err);
                                         } else {
                                             var arr = [];
@@ -84,7 +86,7 @@ exports.loginUser = (req, res) => {
                                             console.log(objRes1);
                                             arr.push(objRes);
                                             arr.push(objRes1);
-                                            res.json(commonFunction.sendResponse(200, 'Token created', arr));
+                                            res.json(commonFunction.sendResponse(200, 'login successful', arr));
                                         }
                                     });
                                 } else if (data2.userType == 'serviceProvider') {
@@ -100,21 +102,21 @@ exports.loginUser = (req, res) => {
                                         serviceRequestModel.find({ serviceId: { $in: data4 } }).populate('serviceId').exec((err, data5) => {
 
                                             if (err) {
-                                                res.status(200).send('Error on the server while fetchinf service request');
+                                                res.status(200).send('login unsuccessful. try again!');
                                             } else {
                                                 var objRes1 = {
                                                     key: 'serviceRequest',
                                                     value: data5
                                                 }
                                                 str.push(objRes1);
-                                                res.send(commonFunction.sendResponse(200, 'Token created ', str));
+                                                res.send(commonFunction.sendResponse(200, 'login successful', str));
                                             }
 
                                         });
 
                                     });
                                 } else {
-                                    res.status(404).send('Error on the server while finding usertype');
+                                    res.status(404).send('wrong usertype');
                                 }
 
                             }
@@ -131,20 +133,20 @@ exports.loginUser = (req, res) => {
 exports.logoutUser = (req, res) => {
     var token1 = req.headers['x-access-token'];
     if (!token1) {
-        res.status(404).send('token required');
+        res.status(404).send('Logout UnSuccessful/ Already Logout');
     } else {
         userModel.findOneAndUpdate({ token: token1 }, {
             $set: { token: '' }
         }, { upsert: true }, (err, data) => {
             if (err) {
-                res.status(500).send('Error on the server');
+                res.status(500).send('logout unsuccessful');
                 console.log(err);
             } else {
                 console.log('1' + data);
                 if (!data) {
-                    res.json(commonFunction.sendResponse(404, 'Logout UnSuccessfull/ Already Logout ', ''));
+                    res.json(commonFunction.sendResponse(404, 'Logout UnSuccessful/ Already Logout ', ''));
                 } else {
-                    res.json(commonFunction.sendResponse(200, 'Logout Successfully', ''));
+                    res.json(commonFunction.sendResponse(200, 'Logout Successful', ''));
                 }
             }
         });
@@ -155,10 +157,10 @@ exports.updateUserInfo = (req, res) => {
 
     var token1 = req.headers['x-access-token'];
     if (!req.body.email && !req.body.userName && !req.body.oldPassword && !req.body.newPassword) {
-        res.json(commonFunction.sendResponse(404, 'no data to  update', ''));
+        res.json(commonFunction.sendResponse(404, 'no data found to  update', ''));
     } else {
         if (!token1) {
-            res.json(commonFunction.sendResponse(404, 'token not found / not logged in', ''));
+            res.json(commonFunction.sendResponse(404, ' not logged in', ''));
         } else {
             commonFunction.verifyToken(token1, function (data) {
                 var updateInfo = {
@@ -167,7 +169,7 @@ exports.updateUserInfo = (req, res) => {
                     oldPswd: data.password
                 };
                 if (!data) {
-                    res.json(commonFunction.sendResponse(404, 'token not found / not logged in', ''));
+                    res.json(commonFunction.sendResponse(404, 'not logged in', ''));
                 } else {
 
                     if (req.body.email != undefined && req.body.email != data.email && req.body.email != '') {
@@ -198,7 +200,7 @@ exports.updateUserInfo = (req, res) => {
                         })
                         .catch(err => {
                             console.log('Error', err.message);
-                            res.json(commonFunction.sendResponse(404, 'new password require /old and new pasword same/old password is wrong', ''));
+                            res.json(commonFunction.sendResponse(404, 'new password require /old and new pasword same/old password is wrong', err.message));
                         });
                     userModel.findOneAndUpdate({ token: token1 },
                         {
@@ -209,13 +211,16 @@ exports.updateUserInfo = (req, res) => {
                                 password: updateInfo.oldPswd,
 
                             }
-                        }, function (err, data) {
+                        }, { runValidators: true }, function (err, data) {
                             if (err) {
-                                res.json(commonFunction.sendResponse(500, 'Error on the server', err));
+                                res.json(commonFunction.sendResponse(500, 'update unsuccesful', err));
                                 console.log(err);
                             } else {
                                 console.log("B" + data);
-                                res.json(commonFunction.sendResponse(200, 'User Details Updated', data));
+                                userModel.findOne({ token: token1 }, (err, userDataResult) => {
+                                    res.json(commonFunction.sendResponse(200, 'User Details Updated successfully', userDataResult));
+                                });
+
 
                             }
                         }
@@ -236,7 +241,7 @@ exports.addComment = (req, res) => {
     else {
         commonFunction.verifyToken(token1, function (data) {
             if (!data) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 commonFunction.checkSerReqId(data, req.body.serviceRequestId, (chk, serReqData) => {
                     if (chk) {
@@ -250,9 +255,9 @@ exports.addComment = (req, res) => {
                                 });
                                 commentModel(addComment).save((err, data) => {
                                     if (err) {
-                                        res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                        res.json(commonFunction.sendResponse(500, 'Comment was not added', err));
                                     } else {
-                                        res.json(commonFunction.sendResponse(200, 'Comment Added', data));
+                                        res.json(commonFunction.sendResponse(200, 'Comment Added successfully', data));
                                     }
                                 });
                             } else {
@@ -270,7 +275,7 @@ exports.addComment = (req, res) => {
                                 });
                                 commentModel(addComment).save((err, data) => {
                                     if (err) {
-                                        res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                        res.json(commonFunction.sendResponse(500, 'Comment was not added', err));
                                     } else {
                                         res.json(commonFunction.sendResponse(200, 'Comment Added', data));
                                     }
@@ -293,19 +298,19 @@ exports.addComment = (req, res) => {
 exports.getComments = (req, res) => {
     var token = req.headers['x-access-token'];
     if (!token) {
-        res.json(commonFunction.sendResponse(404, 'token not found / not logged in', ''));
+        res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
     } else {
         commonFunction.verifyToken(token, function (data) {
             if (!data) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 commonFunction.checkSerReqId(data, req.body.serviceRequestId, (chk, serReqData) => {
                     if (chk) {
                         commentModel.find({ serviceRequestId: req.body.serviceRequestId }).populate().exec((err, data) => {
                             if (err) {
-                                res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                res.json(commonFunction.sendResponse(500, 'Error in getting comments', ''));
                             } else {
-                                res.json(commonFunction.sendResponse(200, 'Comment ', data));
+                                res.json(commonFunction.sendResponse(200, 'Comment fetched successfully', data));
                             }
                         });
                     } else {
@@ -324,47 +329,47 @@ exports.getComments = (req, res) => {
 exports.deleteUser = (req, res) => {
     var token = req.headers['x-access-token'];
     if (!token) {
-        res.json(commonFunction.sendResponse(404, 'all fields are required', ''));
+        res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
     } else {
         commonFunction.verifyToken(token, function (data) {
             if (!data) {
-                res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
             } else {
                 console.log('Data1:' + data);
                 if (data.userType == 'serviceProvider') {
                     serviceModel.find({ serviceProviderId: data._id }, { _id: 1 }, (err, resSerId) => {
                         if (err) {
-                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                            res.json(commonFunction.sendResponse(500, ' error while deleting user ', err));
                         } else {
                             console.log(resSerId);
                             serviceRequestModel.find({ serviceId: { $in: resSerId }, status: 'Accepted' }, (err, checkStatus) => {
                                 if (!checkStatus.length) {
                                     serviceRequestModel.find({ serviceId: { $in: resSerId } }, { _id: 1 }, (err, reqArr) => {
                                         if (err) {
-                                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                            res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                         } else {
                                             console.log('requstArray' + reqArr);
                                             serviceRequestModel.deleteMany({ _id: { $in: reqArr } }, (err, del1) => {
                                                 if (err) {
-                                                    res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                                    res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                                     console.log(err);
                                                 } else {
                                                     console.log(del1);
                                                     commentModel.deleteMany({ serviceRequestId: { $in: reqArr } }, (err, del2) => {
                                                         if (err) {
-                                                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                                            res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                                             console.log(err);
                                                         } else {
                                                             console.log(del2);
                                                             serviceModel.deleteMany({ serviceProviderId: data._id }, (err, del3) => {
                                                                 if (err) {
-                                                                    res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                                                    res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                                                     console.log(err);
                                                                 } else {
                                                                     console.log(del3);
                                                                     userModel.deleteMany({ _id: data._id }, (err, del4) => {
                                                                         if (err) {
-                                                                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                                                            res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                                                             console.log(err);
                                                                         } else {
                                                                             console.log(del4);
@@ -395,7 +400,7 @@ exports.deleteUser = (req, res) => {
                             console.log('a' + dataSrm);
                             serviceRequestModel.find({ customerId: data._id }, { _id: 1 }, (err, dataSerReq) => {
                                 if (err) {
-                                    res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                    res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                     console.log(err);
                                 } else {
                                     console.log('data1' + dataSerReq);
@@ -404,19 +409,19 @@ exports.deleteUser = (req, res) => {
 
                                     serviceRequestModel.deleteMany({ _id: { $in: dataSerReq } }, (err, delReq) => {
                                         if (err) {
-                                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                            res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                             console.log(err);
                                         } else {
                                             console.log('data2' + delReq);
                                             commentModel.deleteMany({ serviceRequestId: { $in: dataSerReq } }, (err, delCom) => {
                                                 if (err) {
-                                                    res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                                    res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                                     console.log(err);
                                                 } else {
                                                     console.log('data3' + delCom);
                                                     userModel.deleteOne({ _id: data._id }, (err, delUser) => {
                                                         if (err) {
-                                                            res.json(commonFunction.sendResponse(500, 'Server error', err));
+                                                            res.json(commonFunction.sendResponse(500, 'error while deleting user', err));
                                                             console.log(err);
                                                         } else {
                                                             console.log('data5' + delUser);
@@ -455,7 +460,7 @@ exports.getOneRequestDetail = (req, res) => {
         commonFunction.verifyToken(token, function (data) {
 
             if (!data) {
-                res.json(commonFunction.sendResponse(200, 'token not valid / not logged in', ''));
+                res.json(commonFunction.sendResponse(200, 'user not logged in', ''));
             } else {
 
                 console.log('Data1:' + data);
@@ -466,16 +471,16 @@ exports.getOneRequestDetail = (req, res) => {
                             serviceRequestModel.find({ _id: req.body.serviceRequestId }).populate('serviceId').exec((err, dataReq) => {
                                 console.log('Data2:' + dataReq);
                                 if (err) {
-                                    res.json(commonFunction.sendResponse(500, 'Error', ''));
+                                    res.json(commonFunction.sendResponse(500, 'Request not Found', ''));
                                 } else {
-                                    res.json(commonFunction.sendResponse(200, 'Request Found:', dataReq));
+                                    res.json(commonFunction.sendResponse(200, 'Request Found', dataReq));
                                 }
                             });
                         } else {
                             serviceRequestModel.find({ _id: req.body.serviceRequestId }).populate('serviceId').exec((err, dataReq) => {
                                 console.log('Data3:' + dataReq);
                                 if (err) {
-                                    res.json(commonFunction.sendResponse(500, 'Error', ''));
+                                    res.json(commonFunction.sendResponse(500, 'Request not Found', ''));
                                 } else {
                                     res.json(commonFunction.sendResponse(200, 'Request Found:', dataReq));
                                 }
@@ -501,7 +506,7 @@ exports.getAllServiceRequest = (req, res) => {
         if (!sort) {
             commonFunction.verifyToken(token, function (data1) {
                 if (!data1) {
-                    res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                    res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
                 } else {
                     if (data1.userType == 'customer') {
 
@@ -509,7 +514,7 @@ exports.getAllServiceRequest = (req, res) => {
                         serviceRequestModel.find({ customerId: data1._id }).populate('serviceId').exec((err, dataReq) => {
                             console.log('Data2:' + dataReq);
                             if (err) {
-                                res.json(commonFunction.sendResponse(500, 'Error', ''));
+                                res.json(commonFunction.sendResponse(500, 'error while getting service request', ''));
                             } else {
                                 res.json(commonFunction.sendResponse(200, 'Request Found:', dataReq));
                             }
@@ -530,7 +535,7 @@ exports.getAllServiceRequest = (req, res) => {
                             (err, data4) => {
                                 serviceRequestModel.find({ serviceId: { $in: data4 } }).populate('customerId').populate('serviceId').then(data5 => {
                                     if (err) {
-                                        res.json(commonFunction.sendResponse(500, ' Server Error', ''));
+                                        res.json(commonFunction.sendResponse(500, ' error while getting service request', ''));
                                     } else {
                                         var objRes1 = {
                                             key: 'ServiceRequest',
@@ -552,7 +557,7 @@ exports.getAllServiceRequest = (req, res) => {
                     console.log("DATA", data1._id)
                 }
                 if (!data1) {
-                    res.json(commonFunction.sendResponse(404, 'token not valid / not logged in', ''));
+                    res.json(commonFunction.sendResponse(404, 'user not logged in', ''));
                 } else {
                     //console.log('Data1:' + data);
                     if (data1.userType == 'customer') {
@@ -561,7 +566,7 @@ exports.getAllServiceRequest = (req, res) => {
                         serviceRequestModel.find({ customerId: data1._id, status: sort }).populate('serviceId').exec((err, dataReq) => {
                             console.log('Data2:' + dataReq);
                             if (err) {
-                                res.json(commonFunction.sendResponse(500, 'Error', ''));
+                                res.json(commonFunction.sendResponse(500, 'error while getting service request', ''));
                             } else {
                                 res.json(commonFunction.sendResponse(200, 'Request Found:', dataReq));
                             }
@@ -577,7 +582,7 @@ exports.getAllServiceRequest = (req, res) => {
                         serviceModel.find({ serviceProviderId: data1._id }, { _id: 1 },
                             function (err, data4) {
                                 if (err) {
-                                    res.json(commonFunction.sendResponse(500, 'Error', ''));
+                                    res.json(commonFunction.sendResponse(500, 'error while getting service request', ''));
                                 } else {
                                     serviceRequestModel.find({ serviceId: data4, status: sort }).populate('customerId').populate('serviceId').then(data5 => {
                                         //await console.log("serReqM:" + data5);
